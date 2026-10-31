@@ -12,6 +12,8 @@ from tools import (
     calculate_required_mark
 )
 
+from progress_tools import save_quiz_result, load_quiz_history
+
 from quiz_tools import generate_quiz, check_answer
 
 from document_tools import (
@@ -281,6 +283,35 @@ def ask_scholarmind(question):
 # 7. INTERACTIVE QUIZ ENGINE
 # ==========================================
 
+def show_progress():
+    history = load_quiz_history()
+
+    print("\n================================")
+    print("       STUDENT PROGRESS")
+    print("================================")
+
+    if not history:
+        print("No quiz history available yet.")
+        print("Complete a quiz to start tracking progress.")
+        return
+
+    total_attempts = len(history)
+
+    average = sum(
+        attempt["percentage"] for attempt in history
+    ) / total_attempts
+
+    print(f"\nTotal quizzes completed: {total_attempts}")
+    print(f"Overall average: {average:.1f}%")
+
+    print("\nRECENT QUIZ ATTEMPTS")
+
+    for attempt in reversed(history[-5:]):
+        print(f"\nTopic: {attempt['topic']}")
+        print(f"Score: {attempt['score']}/{attempt['total']}")
+        print(f"Percentage: {attempt['percentage']}%")
+        print(f"Date: {attempt['date']}")
+
 def run_quiz(topic):
 
     print(f"\nScholarMind: Preparing your quiz on {topic}...")
@@ -306,6 +337,7 @@ def run_quiz(topic):
 
         score = 0
         total = len(questions)
+        missed_questions = []
         if total == 0:
             print("No quiz questions were generated.")
             return
@@ -337,11 +369,15 @@ def run_quiz(topic):
                 print("\nCorrect! Well done.")
             else:
                 print("\nIncorrect.")
+                missed_questions.append(question)
 
             print(f"Correct answer: {result['correct_answer']}")
             print(f"Explanation: {result['explanation']}")
 
         percentage = (score / total) * 100
+
+        save_quiz_result(topic, score, total)
+        print("\nQuiz result saved successfully!")
 
         print("\n================================")
         print("          QUIZ RESULTS")
@@ -356,6 +392,20 @@ def run_quiz(topic):
             print("Good effort. Keep revising.")
         else:
             print("You should revisit this topic.")
+
+        print("\n================================")
+        print("       KNOWLEDGE GAP REPORT")
+        print("================================")
+
+        if missed_questions:
+            print("You should revise these questions:")
+
+            for index, question in enumerate(missed_questions, start=1):
+                print(f"\n{index}. {question['question']}")
+                print(f"Explanation: {question['explanation']}")
+
+        else:
+            print("Excellent! You answered every question correctly.")
 
     except Exception as error:
         print(f"\nQuiz failed: {error}")
@@ -386,6 +436,7 @@ GENERAL
 /clear             Clear conversation history
 /help              Display commands
 /exit              Close ScholarMind
+/progress          View academic progress
 
 EXAMPLE QUESTIONS
 
@@ -777,6 +828,10 @@ Do not skip foundational concepts.
                 continue
 
             run_quiz(topic)
+            continue
+        
+        if command == "/progress":
+            show_progress()
             continue
 
         # ----------------------------------
